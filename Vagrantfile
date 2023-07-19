@@ -11,6 +11,7 @@ Vagrant.configure("2") do |config|
     vb.memory = 2048
     end
     gw.vm.network "public_network" # DHCP
+    gw.vm.network "public_network" # 공인 ip를 추가하여 서버를 하나 더 연결가능
     gw.vm.network "private_network", ip: "192.168.33.254", virtualbox__intnet: true
 
     gw.vm.provision "shell", inline: <<-SCRIPT
