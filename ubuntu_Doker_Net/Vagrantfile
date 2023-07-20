@@ -1,0 +1,61 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/focal64"
+
+  config.vm.define "gw1" do |gw1|
+    gw1.vm.hostname = "gateway1"
+    gw1.vm.provider "virtualbox" do |vb|
+      vb.name = "gateway1"
+      vb.cpus = 2
+      vb.memory = 2048
+    end
+    gw1.vm.network "public_network"  # DHCP
+    gw1.vm.network "private_network", ip: "192.168.123.254", virtualbox__intnet: true
+
+    gw1.vm.provision "shell", inline: <<-SCRIPT
+    SCRIPT
+  end
+
+  config.vm.define "docker_registry" do |docker_registry|
+    docker_registry.vm.hostname = "docker-registry"
+    docker_registry.vm.provider "virtualbox" do |vb|
+      vb.name = "docker-registry"
+      vb.cpus = 2
+      vb.memory = 2048
+    end
+    # ubuntu 20.04 의 인터페이스명 -> enp0s8
+    docker_registry.vm.network "private_network", ip: "192.168.123.10", virtualbox__intnet: true
+    # ubuntu 20.04 의 인터페이스명 -> enp0s9 ; 순서대로 인터페이스가 만들어진다
+    docker_registry.vm.network "private_network", ip: "192.168.223.10", virtualbox__intnet: true
+    docker_registry.vm.provision "shell", inline: <<-SCRIPT
+    SCRIPT
+  end
+
+  config.vm.define "gw2" do |gw2|
+    gw2.vm.hostname = "gateway2"
+    gw2.vm.provider "virtualbox" do |vb|
+      vb.name = "gateway2"
+      vb.cpus = 2
+      vb.memory = 2048
+    end
+    gw2.vm.network "private_network", ip: "192.168.223.254", virtualbox__intnet: true
+    gw2.vm.network "public_network" #DHCP
+    gw2.vm.provision "shell", inline: <<-SCRIPT
+    SCRIPT
+  end
+
+  config.vm.define "docker" do |docker|
+    docker.vm.hostname = "docker-server"
+    docker.vm.provider "virtualbox" do |vb|
+      vb.name = "docker-server"
+      vb.cpus = 2
+      vb.memory = 2048
+    end
+    docker.vm.network "private_network", ip: "192.168.223.20", virtualbox__intnet: true
+    docker.vm.provision "shell", inline: <<-SCRIPT
+    SCRIPT
+  end
+
+end
