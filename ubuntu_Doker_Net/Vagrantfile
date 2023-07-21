@@ -13,30 +13,95 @@ Vagrant.configure("2") do |config|
     end
     gw1.vm.network "public_network"  # DHCP
     gw1.vm.network "private_network", ip: "192.168.123.254", virtualbox__intnet: true
-
     gw1.vm.provision "shell", inline: <<-SCRIPT
-    sudo ip route del default via 10.0.2.2
-    sudo sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf
-    sudo sysctl -p
-    sudo iptables -t nat -A POSTROUTING -s 192.168.0.0/16 -o enp0s8 -j MASQUERADE
+      sudo ip route delete default via 10.0.2.2 dev enp0s3
+      sudo sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf
+      sudo sysctl -p
+      sudo iptables -t nat -A POSTROUTING -s 192.168.123.10 -o enp0s8 -j LOG --log-prefix='[MASQ] '
+      sudo iptables -t nat -A POSTROUTING -s 192.168.123.10 -o enp0s8 -j MASQUERADE
     SCRIPT
   end
 
-  config.vm.define "docker_registry" do |docker_registry|
-    docker_registry.vm.hostname = "docker-registry"
-    docker_registry.vm.provider "virtualbox" do |vb|
+  config.vm.define "dock_reg" do |dock_reg|
+    dock_reg.vm.hostname = "docker-registry"
+    dock_reg.vm.provider "virtualbox" do |vb|
       vb.name = "docker-registry"
       vb.cpus = 2
       vb.memory = 2048
     end
-    # ubuntu 20.04 의 인터페이스명 -> enp0s8
-    docker_registry.vm.network "private_network", ip: "192.168.123.10", virtualbox__intnet: true
-    # ubuntu 20.04 의 인터페이스명 -> enp0s9 ; 순서대로 인터페이스가 만들어진다
-    docker_registry.vm.network "private_network", ip: "192.168.223.10", virtualbox__intnet: true
-    docker_registry.vm.provision "shell", inline: <<-SCRIPT
-    sudo ip route del default via 10.0.2.2
-    sudo ip route add default via 192.168.123.254 dev enp0s8
+    dock_reg.vm.network "private_network", ip: "192.168.123.10", virtualbox__intnet: true
+    dock_reg.vm.network "private_network", ip: "192.168.223.10", virtualbox__intnet: true
+    dock_reg.vm.provision "shell", inline: <<-SCRIPT
+      sudo ip route delete default via 10.0.2.2 dev enp0s3
+      sudo ip route add default via 192.168.123.254 dev enp0s8
+      sudo apt-get update -y
+      sudo apt-get install -y ca-certificates curl gnupg
+      sudo install -m 0755 -d /etc/apt/keyrings
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+      sudo chmod a+r /etc/apt/keyrings/docker.gpg
+      echo \
+        "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+        "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+      sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+      sudo apt-get update -y
+      sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+      sudo usermod -a -G docker vagrant
     SCRIPT
+     # docker ps
+     # docker run -d --restart=always --name repository -p 80:80 registry
+     # docker ps
+     # docker images
+     # docker tag registry repo.image.co.kr/registry:latest
+     # sudo vi /etc/hosts #192.168.223.10 repo.image.co.kr 추가
+     # sudo vi /etc/docker/daemon.json 
+     #{
+      "insecure-registries": ["http://repo.image.co.kr"]
+     #}
+     #sudo systemctl restart docker
+     #docker run -d --restart=always --name repository -e REGISTRY_HTTP_ADDR=0.0.0.0:80 -p 80:80 registry
+     #docker push repo.image.co.kr/registry:latest
+     #docker pull nginx
+     #docker tag nginx repo.image.co.kr/nginx:latest
+     #docker push repo.image.co.kr/nginx
+
+  end
+
+  config.vm.define "docker" do |docker|
+    docker.vm.hostname = "docker"
+    docker.vm.provider "virtualbox" do |vb|
+      vb.name = "docker"
+      vb.cpus = 2
+      vb.memory = 2048
+    end
+    docker.vm.network "private_network", ip: "192.168.223.20", virtualbox__intnet: true
+    docker.vm.provision "shell", inline: <<-SCRIPT
+      sudo ip route delete default via 10.0.2.2 dev enp0s3
+      sudo ip route add default via 192.168.223.254 dev enp0s8
+      sudo apt-get update -y
+      sudo apt-get install -y ca-certificates curl gnupg
+        sudo install -m 0755 -d /etc/apt/keyrings
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+      sudo chmod a+r /etc/apt/keyrings/docker.gpg
+      echo \
+        "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+        "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+      sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+      sudo apt-get update -y
+      sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+      sudo usermod -a -G docker vagrant
+    SCRIPT
+      #ip route get 8.8.8.8
+      #ping -c 2 8.8.8.8
+      #sudo vi /etc/hosts #192.168.223.10 repo.image.co.kr 추가
+      #docker pull repo.image.co.kr/registry
+      #sudo vi /etc/docker/daemon.json
+      #sudo systemctl restart docker
+      # nslookup docker.io
+      #docker pull nginx ##안되야함, dokc-reg에서 받아올거기 때문
+      #docker pull repo.image.co.kr/nginx
+      #docker run -d -p 80:80 --rm --name web repo.image.co.kr/nginx
+      #docker ps
+
   end
 
   config.vm.define "gw2" do |gw2|
@@ -47,25 +112,22 @@ Vagrant.configure("2") do |config|
       vb.memory = 2048
     end
     gw2.vm.network "private_network", ip: "192.168.223.254", virtualbox__intnet: true
-    gw2.vm.network "public_network" #DHCP
+    gw2.vm.network "public_network"
     gw2.vm.provision "shell", inline: <<-SCRIPT
-    sudo ip route del default via 10.0.2.2 dev enp0s3
-    sudo sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf
-    sudo sysctl -p
-    sudo iptables -t nat -A PREROUTING -d 192.168.223.254 -i enp0s9 -p tcp --dport 80 -j DNAT --to-destination=192.168.223.20:80
+      sudo ip route delete default via 10.0.2.2 dev enp0s3
+      sudo sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf
+      sudo sysctl -p
+      sudo iptables -t nat -A POSTROUTING -s 192.168.223.20 -o enp0s9 -j LOG --log-prefix='[MASQ] '
+      sudo iptables -t nat -A POSTROUTING -s 192.168.223.20 -o enp0s9 -j MASQUERADE
     SCRIPT
+    # sudo iptables -t filter -A FORWARD -s 192.168.223.20 -d 18.210.197.188 -j LOG --log-prefix='[DROP] '
+    # sudo iptables -t filter -A FORWARD -s 192.168.223.20 -d 18.210.197.188 -j DROP
+    ##docker서버의 nslookup docker.io의 ip 주소 전부 DROP작업
+    # ip addr ##enp0s9의 ip주소확인
+    # sudo iptables -t nat -A PREROUTING -i enp0s9 -d [enp0s9 ip주소] -p tcp --dport 80 -j DNAT --to-destination=192.168.223.20:80
   end
-
-  config.vm.define "docker" do |docker|
-    docker.vm.hostname = "docker-server"
-    docker.vm.provider "virtualbox" do |vb|
-      vb.name = "docker-server"
-      vb.cpus = 2
-      vb.memory = 2048
-    end
-    docker.vm.network "private_network", ip: "192.168.223.20", virtualbox__intnet: true
-    docker.vm.provision "shell", inline: <<-SCRIPT
-    SCRIPT
-  end
-
 end
+
+##vagrant up 시 gw1,gw2를 먼저 실행, DHCP를 받아야기 때문
+##gw2 ip주소로 웹브라우저에 nginx가 실행이 되야함
+##dock-reg 에서만 docker를 pull 받을 수 있게 nslookup docker.io의 ip 주소 전부 DROP작업
