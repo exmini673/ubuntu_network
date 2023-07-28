@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluent-bit
+  namespace: default
+  labels:
+    k8s-app: fluentd-logging # 적절한 네임스페이스로 변경하세요.
+spec:
+  selector:
+    matchLabels:
+      app: fluent-bit
+  template:
+    metadata:
+      labels:
+        app: fluent-bit
+    spec:
+      containers:
+        - name: fluent-bit
+          image: hiwill41/httpd:3.0  # 원하는 버전의 Fluent Bit 이미지로 변경 가능
+          ports:
+            - containerPort: 80  # Fluent Bit HTTP 포트
+          volumeMounts:
+            - name: config-volume
+              mountPath: /fluent-bit/etc/fluent-bit.conf
+              subPath: fluent-bit.conf
+            - name: rules-volume
+              mountPath: /fluent-bit/etc/parsers.d/apache2-to-syslog.conf
+              subPath: apache2-to-syslog.conf
+      volumes:
+        - name: config-volume
+          configMap:
+            name: fluent-bit-config
+        - name: rules-volume
+          configMap:
+            name: fluent-bit-rules
+      #serviceAccountName: hiwill41   # 적절한 서비스 계정으로 변경하세요.
+      imagePullSecrets:
+      - name: docker-pull-secret
+

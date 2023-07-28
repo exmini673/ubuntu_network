@@ -1,0 +1,93 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluent-bit-config
+  namespace:
+  labels:
+   app: static-web
+   server: httpd    # 적절한 네임스페이스로 변경하세요.
+data:
+  fluent-bit.conf: |
+    [SERVICE]
+        Flush        1
+        Daemon       Off
+        Log_Level    info
+
+    @INCLUDE input-http.conf
+    @INCLUDE output-syslog.conf
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluent-bit-rules
+  namespace:
+  labels:
+   app: static-web
+   server: httpd   # 적절한 네임스페이스로 변경하세요.
+data:
+  apache2-to-syslog.conf: |
+    [FILTER]
+        Name                modify
+        Match               *
+        Condition           key_value(log, /usr/local/apache2/logs/access.log)
+        Add                 log_type apache
+
+        Name                modify
+        Match               *
+        Condition           key_value(log, /usr/local/apache2/logs/error.log)
+        Add                 log_type apache
+
+    [FILTER]
+        Name                nest
+        Match               *
+        Operation           lift
+        Nest_Under          apache
+        Wildcard            log
+
+    [FILTER]
+        Name                nest
+        Match               *
+        Operation           nest
+        Nest_Under          kubernetes
+        Wildcard            *
+
+    [FILTER]
+        Name                nest
+        Match               *
+        Operation           nest
+        Nest_Under          kubernetes
+        Wildcard            labels
+
+        Name                nest
+        Match               *
+        Operation           lift
+        Nest_Under          kubernetes
+        Wildcard            pod_name
+
+    [FILTER]
+        Name                modify
+        Match               *
+        Condition           key_value(log_type, apache)
+        Add                 stream_tag apache
+
+    [FILTER]
+        Name                nest
+        Match               *
+        Operation           nest
+        Nest_Under          log
+        Wildcard            apache
+
+    [FILTER]
+        Name                grep
+        Match               *
+        Regex               log ^(?<ip>[^ ]+) [^ ]+ [^ ]+ \[[^\]]+\] "(?<method>[A-Z]+) (?<uri>[^ ]+) HTTP/[0-9.]+" (?<status>[0-9]+) (?<size>[0-9]+) "[^"]+" "(?<user_agent>[^"]+)"$
+        Exclude             method CONNECT
+
+    [FILTER]
+        Name                nest
+        Match               *
+        Operation           lift
+        Nest_Under          log
+        Wildcard            log_type
+
+

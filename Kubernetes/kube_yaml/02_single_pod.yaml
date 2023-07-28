@@ -41,11 +41,11 @@ spec:
       limits:
         memory: "256Mi"
         cpu: "500m"
-    volumeMounts:
+    volumeMounts:     ##볼륨키
     - name: tmpfs
       mountPath: /tmp/
   imagePullSecrets:
   - name: docker-pull-secret
   volumes:
-  - name: tmpfs
+  - name: tmpfs     ##임시볼륨
     emptyDir: {}
