@@ -1,0 +1,118 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deploy-nginx-service
+  labels: 
+    app: deploy-nginx-service
+spec:
+  selector:
+    matchLabels:
+      app: deploy-nginx-service
+  replicas: 3   
+  template:
+    metadata:
+      labels:
+        app: deploy-nginx-service
+    spec:
+      containers:
+      - name: deploy-nginx-service
+        image: nginx:latest
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        volumeMounts:
+        - name: nfs-volume
+          mountPath: /usr/share/nginx/html    
+      volumes:
+      - name: nfs-volume
+        persistentVolumeClaim:
+         claimName: nfs-pvc1  
+      imagePullSecrets:
+      - name: docker-pull-secret  
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deploy-httpd-service
+spec:
+  selector:
+    matchLabels:
+      app: deploy-httpd-service
+  replicas: 3    
+  template:
+    metadata:
+      labels:
+        app: deploy-httpd-service
+    spec:
+      containers:
+      - name: deploy-httpd-service
+        image: httpd:latest 
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 80
+      imagePullSecrets:
+      - name: docker-pull-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: deploy-nginx-service
+spec:
+  selector:
+    app: deploy-nginx-service
+  ports:
+  - port: 80
+    targetPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: deploy-httpd-service
+spec:
+  selector:
+    app: deploy-httpd-service
+  ports:
+  - port: 80
+    targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: myingress
+  labels:
+    name: myingress
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/name: ingress-nginx
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: "/"  
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: "kube.home.com"
+    http:
+      paths:
+      - pathType: Prefix
+        path: /
+        backend:
+          service:
+            name: deploy-nginx-service
+            port: 
+              number: 80
+      - pathType: Prefix
+        path: /main
+        backend:
+          service:
+            name: deploy-nginx-service
+            port: 
+              number: 80
+      - pathType: Prefix
+        path: /test
+        backend:
+          service:
+            name: deploy-httpd-service
+            port: 
+              number: 80
