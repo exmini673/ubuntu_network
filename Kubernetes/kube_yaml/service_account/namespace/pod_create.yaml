@@ -5,6 +5,7 @@ metadata:
   labels:
     name: role-test-pod
     add: label
+  namespace: user-space 
 spec:
   containers:
   - name: role-test-pod
