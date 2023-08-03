@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config1 
+data:
+  key: value
+  name: min
+  version: "1.0"
+  instance: nginx 
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-default-conf
+data:
+  default.conf: | # or
+
+## kubectl exec config-pod cat /etc/nginx/conf.d/default.conof
+## 전체선택하고 
+##    server {lsiten   8080;변경}

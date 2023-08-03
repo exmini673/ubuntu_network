@@ -8,3 +8,4 @@ rules:
   resources: ["pods"] # kubernetes API의 Group에 소속 되어 있는 Kind
   verbs: ["creat","delete","get","watch","patch","list"] # 리소스에 대한 조회/생성/삭제/수정 등의 작업
 
+
