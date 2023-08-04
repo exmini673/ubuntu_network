@@ -1,0 +1,28 @@
+apiVersion: batch/v1 #1회성 실행
+kind: Job
+metadata:
+  name: myjob
+spec:
+  ttlSecondsAfterFinished: 100 #초 지나면 자동으로 리소스에서 사라지겠다
+  parallelism: 2 #한 번에 실행할 파드 수 
+  completions: 6 #정상 종료 수 6개 나와야함
+  template: #파드 정보
+    spec:
+      containers:
+      - name: job-container
+        image: alpine
+        command: ["/bin/sh","-c","echo 'Job Running'"]
+      restartPolicy: Never # onFailer; 실패하면 다시 실행, always 항상 다시 시작
+
+
+# Job / cronJob
+# http 또는 database처럼 지속적으로 서비스가 동작하는 형태가 아닌
+# 필요한 때애만 실행이 되고 종료가 되어야 하는 형태의 작업이 필요할 때 사용
+# 서비스 또는 서버의 로그 정보를 수집하고 로그 서버에 보내는 작업을 할 때
+# 이 과정엥서 계속 로그 수집 과정이 지속적으로 동작할 필요가 없을 때 사용
+# 만약 주기적으로 동작을 해야하는 경우 CronJob 사용
+# Job / CronJop으로 수행할 수 있는 작업 예시
+#  1. 주기적인 로그 수집 및 전송
+#  2. 주기적인 데이터베이스 백업
+#  3. 프로그램의 테스트를 위한 소스코드 다운로드 및 실행
+
